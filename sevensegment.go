@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	i2c "github.com/d2r2/go-i2c"
 )
@@ -45,10 +46,20 @@ func main() {
 	//_, _ = pack.WriteBytes([]byte{0x06 & 0xFF, 0x6D & 0xFF})
 	//_, _ = pack.WriteBytes([]byte{0x04 & 0xFF, 0x00 & 0xFF})
 
-	Write(0, "1")
-	Write(1, "2")
-	Write(2, "3")
-	Write(3, "4")
+	//Write(0, "1")
+	//Write(1, "2")
+	//Write(2, "3")
+	//Write(3, "4")
+
+	//WriteString("1456")
+
+	// Turn on the colon
+	_, _ = pack.WriteBytes([]byte{0x04 & 0xFF, 0x02 & 0xFF})
+
+	for {
+		WriteString(time.Now().Format("1504"))
+		time.Sleep(15 * time.Second)
+	}
 }
 
 func Clear() {
@@ -74,5 +85,19 @@ func Write(pos int, c string) {
 	log.Printf("Writing %#x = %#x\n", byte((pos+offset)*2), digitMap[c]&0xFF)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func WriteString(s string) {
+	if len(s) > 4 {
+		return
+	}
+
+	r := []rune(s)
+
+	pos := 3
+	for i := len(r) - 1; i >= 0; i-- {
+		Write(pos, string(r[i]))
+		pos--
 	}
 }
