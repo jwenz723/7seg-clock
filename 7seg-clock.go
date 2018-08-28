@@ -6,10 +6,11 @@ import (
 
 	i2c "github.com/d2r2/go-i2c"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"fmt"
 )
 
 var (
-	cf       = kingpin.Flag("config", "Path to yaml config file.").Short('c').String()
+	cf       = kingpin.Flag("config", "Path to yaml config file.").Default("config.yaml").Short('c').String()
 	pack     *i2c.I2C
 	digitMap = map[string]uint8{
 		" ": 0x00,
@@ -35,15 +36,13 @@ var (
 
 func main() {
 	kingpin.Parse()
-	log.Printf("config: %s\n", *cf)
-	//config, err := NewConfig("config.yaml")
-	//if err != nil {
-	//panic(fmt.Errorf("error parsing config.yml: %s", err))
-	//}
+	config, err := NewConfig(*cf)
+	if err != nil {
+		panic(fmt.Errorf("error parsing config file: %s", err))
+	}
 
 	// Connect to seven segment
-	//i2c, err := i2c.NewI2C(config.I2CAddr, config.I2CBus)
-	i2c, err := i2c.NewI2C(0x70, 1)
+	i2c, err := i2c.NewI2C(config.I2CAddr, config.I2CBus)
 	if err != nil {
 		log.Fatal(err)
 	}
