@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -30,8 +31,13 @@ var digitMap = map[string]uint8{
 }
 
 func main() {
+	config, err := NewConfig("config.yaml")
+	if err != nil {
+		panic(fmt.Errorf("error parsing config.yml: %s", err))
+	}
+
 	// Connect to seven segment
-	i2c, err := i2c.NewI2C(0x70, 1)
+	i2c, err := i2c.NewI2C(config.I2CAddr, config.I2CBus)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,27 +47,29 @@ func main() {
 
 	Clear()
 
-	//_, _ = pack.WriteBytes([]byte{0x00 & 0xFF, 0x06 & 0xFF})
-	//_, _ = pack.WriteBytes([]byte{0x02 & 0xFF, 0x7D & 0xFF})
-	//_, _ = pack.WriteBytes([]byte{0x06 & 0xFF, 0x6D & 0xFF})
-	//_, _ = pack.WriteBytes([]byte{0x04 & 0xFF, 0x00 & 0xFF})
-
-	//Write(0, "1")
-	//Write(1, "2")
-	//Write(2, "3")
-	//Write(3, "4")
-
-	//WriteString("1456")
-
 	// Turn on the colon
 	_, _ = pack.WriteBytes([]byte{0x04 & 0xFF, 0x02 & 0xFF})
 
+	writer := make(chan string)
+	go func() {
+		for s := range writer {
+			WriteString(s)
+		}
+	}()
+
+	l := ""
 	for {
-		WriteString(time.Now().Format("1504"))
+		s := time.Now().Format("1504")
+		if l != s {
+			l = s
+			writer <- l
+		}
+
 		time.Sleep(15 * time.Second)
 	}
 }
 
+// Clear will clear the 7-Segment display
 func Clear() {
 	for i := range [5]int{} {
 		_, err := pack.WriteBytes([]byte{byte(i * 2), 0x00 & 0xFF})
@@ -71,6 +79,8 @@ func Clear() {
 	}
 }
 
+// Write writes c to position pos on the 7-Segment display. pos must be between 0 and 3,
+// where 0 is the far left segment and 3 is the far right segment.
 func Write(pos int, c string) {
 	if pos < 0 || pos > 3 {
 		return
@@ -88,6 +98,7 @@ func Write(pos int, c string) {
 	}
 }
 
+// WriteString writes a string to the 7-Segment display. Nothing will happen if len(s) > 4.
 func WriteString(s string) {
 	if len(s) > 4 {
 		return
