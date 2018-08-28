@@ -7,10 +7,13 @@ import (
 	i2c "github.com/d2r2/go-i2c"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"fmt"
+	"github.com/julienschmidt/httprouter"
+	"net/http"
 )
 
 var (
-	cf       = kingpin.Flag("config", "Path to yaml config file.").Default("config.yaml").Short('c').String()
+	cf       	= kingpin.Flag("config", "Path to yaml config file.").Default("config.yaml").Short('c').String()
+	dryI2C		= kingpin.Flag("dryI2C", "Use this to run without a real I2C interface.").Short('d').Bool()
 	pack     *i2c.I2C
 	digitMap = map[string]uint8{
 		" ": 0x00,
@@ -41,19 +44,23 @@ func main() {
 		panic(fmt.Errorf("error parsing config file: %s", err))
 	}
 
-	// Connect to seven segment
-	i2c, err := i2c.NewI2C(config.I2CAddr, config.I2CBus)
-	if err != nil {
-		log.Fatal(err)
+	if !*dryI2C {
+		// Connect to seven segment
+		i, err := i2c.NewI2C(config.I2CAddr, config.I2CBus)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pack = i
+		// Free I2C connection on exit
+		defer pack.Close()
+	} else {
+		log.Println("dry run I2C")
 	}
-	pack = i2c
-	// Free I2C connection on exit
-	defer pack.Close()
 
 	Clear()
 
 	// Turn on the colon
-	_, _ = pack.WriteBytes([]byte{0x04 & 0xFF, 0x02 & 0xFF})
+	setColon(true)
 
 	writer := make(chan string)
 	go func() {
@@ -62,44 +69,77 @@ func main() {
 		}
 	}()
 
-	l := ""
-	for {
-		s := time.Now().Format("1504")
-		if l != s {
-			l = s
-			writer <- l
-		}
+	go func() {
+		l := ""
+		for {
+			s := time.Now().Format("1504")
+			if l != s {
+				l = s
+				writer <- l
+			}
 
-		time.Sleep(15 * time.Second)
+			time.Sleep(15 * time.Second)
+		}
+	}()
+
+	router := httprouter.New()
+	router.GET("/alarm/:time", alarm)
+
+	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+// a handler to set the alarm time
+func alarm(w http.ResponseWriter, _ *http.Request, p httprouter.Params) {
+	t, err := time.ParseInLocation("15:04", p.ByName("time"), time.Now().Location())
+	if err != nil {
+		fmt.Fprintf(w, "Failed to parse time. Must be specified in format 15:04.\nError: %s\n", err)
+	}
+
+	fmt.Fprintf(w, "Alarm: %s\n", t)
+}
+
+func setColon(on bool) {
+	if pack != nil {
+		_, _ = pack.WriteBytes([]byte{0x04 & 0xFF, 0x02 & 0xFF})
+	} else {
+		log.Println("dry run - setColon")
 	}
 }
 
 // Clear will clear the 7-Segment display
 func Clear() {
-	for i := range [5]int{} {
-		_, err := pack.WriteBytes([]byte{byte(i * 2), 0x00 & 0xFF})
-		if err != nil {
-			log.Fatal(err)
+	if pack != nil {
+		for i := range [5]int{} {
+			_, err := pack.WriteBytes([]byte{byte(i * 2), 0x00 & 0xFF})
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
+	} else {
+		log.Println("dry run - Clear()")
 	}
 }
 
 // Write writes c to position pos on the 7-Segment display. pos must be between 0 and 3,
 // where 0 is the far left segment and 3 is the far right segment.
 func Write(pos int, c string) {
-	if pos < 0 || pos > 3 {
-		return
-	}
+	if pack != nil {
+		if pos < 0 || pos > 3 {
+			return
+		}
 
-	offset := 0
-	if pos >= 2 {
-		offset = 1
-	}
+		offset := 0
+		if pos >= 2 {
+			offset = 1
+		}
 
-	_, err := pack.WriteBytes([]byte{byte((pos + offset) * 2), digitMap[c] & 0xFF})
-	log.Printf("Writing %#x = %#x\n", byte((pos+offset)*2), digitMap[c]&0xFF)
-	if err != nil {
-		log.Fatal(err)
+		_, err := pack.WriteBytes([]byte{byte((pos + offset) * 2), digitMap[c] & 0xFF})
+		log.Printf("Writing %#x = %#x\n", byte((pos+offset)*2), digitMap[c]&0xFF)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Printf("dry run - Write %d = %s\n", pos, c)
 	}
 }
 
