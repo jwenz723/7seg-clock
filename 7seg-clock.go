@@ -4,16 +4,17 @@ import (
 	"log"
 	"time"
 
-	i2c "github.com/d2r2/go-i2c"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"fmt"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+
+	i2c "github.com/d2r2/go-i2c"
+	"github.com/julienschmidt/httprouter"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	cf       	= kingpin.Flag("config", "Path to yaml config file.").Default("config.yaml").Short('c').String()
-	dryI2C		= kingpin.Flag("dryI2C", "Use this to run without a real I2C interface.").Short('d').Bool()
+	cf       = kingpin.Flag("config", "Path to yaml config file.").Default("config.yaml").Short('c').String()
+	dryI2C   = kingpin.Flag("dryI2C", "Use this to run without a real I2C interface.").Short('d').Bool()
 	pack     *i2c.I2C
 	digitMap = map[string]uint8{
 		" ": 0x00,
@@ -116,16 +117,25 @@ func Begin() {
 
 	// Turn on the oscillator.
 	// self._device.writeList(HT16K33_SYSTEM_SETUP | HT16K33_OSCILLATOR, [])
-	pack.WriteRegU8(0x20 | 0x01, 0x00)
+	pack.WriteRegU8(0x20|0x01, 0x00)
 
 	// Turn display on with no blinking.
 	// self.set_blink(HT16K33_BLINK_OFF)
-	pack.WriteRegU8(0x80 | 0x01 | 0x00, 0x00)
+	pack.WriteRegU8(0x80|0x01|0x00, 0x00)
 
 	// Set display to full brightness.
 	// self.set_brightness(15)
 	//   - > self._device.writeList(HT16K33_CMD_BRIGHTNESS | brightness, [])
-	pack.WriteRegU8(0xE0 | 15, 0x00)
+	//pack.WriteRegU8(0xE0|1, 0x00)
+	SetBrightness(1)
+}
+
+func SetBrightness(b byte) {
+	if b < 0 || b > 15 {
+		return
+	}
+
+	pack.WriteRegU8(0xE0|b, 0x00)
 }
 
 // Clear will clear the 7-Segment display
