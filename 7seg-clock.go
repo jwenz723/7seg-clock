@@ -57,6 +57,9 @@ func main() {
 		log.Println("dry run I2C")
 	}
 
+	// Initialize the display
+	Begin()
+
 	Clear()
 
 	// Turn on the colon
@@ -104,6 +107,25 @@ func setColon(on bool) {
 	} else {
 		log.Println("dry run - setColon")
 	}
+}
+
+// Begin will initialize driver with LEDs enabled and all turned off.
+func Begin() {
+	// TODO: is WriteRegU8 the same as python's _device.writeList ??
+	// TODO: is 0x00 the same as python's [] ??
+
+	// Turn on the oscillator.
+	// self._device.writeList(HT16K33_SYSTEM_SETUP | HT16K33_OSCILLATOR, [])
+	pack.WriteRegU8(0x20 | 0x01, 0x00)
+
+	// Turn display on with no blinking.
+	// self.set_blink(HT16K33_BLINK_OFF)
+	pack.WriteRegU8(0x80 | 0x01 | 0x00, 0x00)
+
+	// Set display to full brightness.
+	// self.set_brightness(15)
+	//   - > self._device.writeList(HT16K33_CMD_BRIGHTNESS | brightness, [])
+	pack.WriteRegU8(0xE0 | 15, 0x00)
 }
 
 // Clear will clear the 7-Segment display
