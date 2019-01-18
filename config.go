@@ -8,9 +8,10 @@ import (
 
 // Config defines a struct to match a configuration yaml file.
 type Config struct {
-	AlarmTime string `yaml:"AlarmTime"`
-	I2CAddr   uint8  `yaml:"I2CAddr"`
-	I2CBus    int    `yaml:"I2CBus"`
+	AlarmTime 			string `yaml:"AlarmTime"`
+	AlarmTriggers 		map[string]string `yaml:"AlarmTriggers"`
+	I2CAddr   			uint8  `yaml:"I2CAddr"`
+	I2CBus    			int    `yaml:"I2CBus"`
 }
 
 // NewConfig will create a new Config instance from the specified yaml file
