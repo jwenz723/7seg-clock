@@ -13,3 +13,7 @@ sevensegment
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Don't track the actual config files
+config.yaml
+config.yml

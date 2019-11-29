@@ -37,6 +37,7 @@ var (
 		"E": 0x79,
 		"F": 0x71,
 	}
+	alarmTime time.Time
 )
 
 func main() {
@@ -44,6 +45,11 @@ func main() {
 	config, err := NewConfig(*cf)
 	if err != nil {
 		panic(fmt.Errorf("error parsing config file: %s", err))
+	}
+
+	alarmTime, err := time.ParseInLocation("15:04", config.AlarmTime, time.Now().Location())
+	if err != nil {
+		panic(fmt.Errorf("error parsing AlarmTime from config: %s", err))
 	}
 
 	if !*dryI2C {
@@ -67,6 +73,7 @@ func main() {
 	// Turn on the colon
 	setColon(true)
 
+	// A go routine to handle writing to the 7seg display
 	writer := make(chan string)
 	go func() {
 		for s := range writer {
@@ -153,6 +160,18 @@ func main() {
 				}
 			}
 			time.Sleep(10 * time.Millisecond)
+
+			//			if t == alarmTime {
+			//				for k, v := range config.AlarmTriggers {
+			//					_, err := http.Get("https://maker.ifttt.com/trigger/" + k + "/with/key/" + v)
+			//					if err != nil {
+			//						fmt.Errorf("error with AlarmTrigger %s: %s\n", k, err)
+			//						continue
+			//					}
+			//					fmt.Printf("AlarmTrigger %s success\n", k)
+			//				}
+			//
+			//			}
 		}
 	}()
 

@@ -1,3 +1,4 @@
 AlarmTime:
+AlarmTriggers:
 I2CAddr: 0x70
 I2CBus: 1
